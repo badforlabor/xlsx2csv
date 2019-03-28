@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 var xlsxPath = flag.String("f", "", "Path to an XLSX file")
 var sheetIndex = flag.Int("i", 0, "Index of sheet to convert, zero based")
 var delimiter = flag.String("d", ";", "Delimiter to use between fields")
+var output = flag.String("o", "output.csv", "output file name")
 
 type outputer func(s string)
 
@@ -37,7 +39,12 @@ func generateCSVFromXLSXFile(excelFileName string, sheetIndex int, outputf outpu
 				if err != nil {
 					vals = append(vals, err.Error())
 				}
-				vals = append(vals, fmt.Sprintf("%q", str))
+				//vals = append(vals, fmt.Sprintf("%q", str))
+				str = strings.Trim(str, " ")
+				str = strings.Replace(str, "\n", "\\n", -1)
+				str = strings.Replace(str, "\r", "\\r", -1)
+				str = strings.Replace(str, ",", "|", -1)
+				vals = append(vals, str)
 			}
 			outputf(strings.Join(vals, *delimiter) + "\n")
 		}
@@ -52,8 +59,12 @@ func main() {
 		return
 	}
 	flag.Parse()
-	printer := func(s string) { fmt.Printf("%s", s) }
+
+	var csvData string = ""
+	printer := func(s string) { fmt.Printf("%s", s); csvData += s }
 	if err := generateCSVFromXLSXFile(*xlsxPath, *sheetIndex, printer); err != nil {
 		fmt.Println(err)
 	}
+
+	ioutil.WriteFile(*output, []byte(csvData), 0777)
 }
